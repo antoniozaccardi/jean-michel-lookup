@@ -81,7 +81,7 @@
 
             // Splitter par lignes et nettoyer
             const queries = rawInput
-                .split('\n')
+                .split(/[\n,\s]+/)  // Split par retour ligne, virgule OU espace
                 .map(q => q.trim())
                 .filter(q => q.length > 0);
 
