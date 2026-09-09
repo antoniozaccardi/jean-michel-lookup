@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jean Michel Lookup</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: linear-gradient(135deg, #0d47a1 0%, #1565c0 50%, #1e88e5 100%); min-height: 100vh; padding: 20px; }
+        .wrapper { max-width: 900px; margin: 0 auto; }
+        header { background: rgba(255, 255, 255, 0.95); border-radius: 12px; padding: 40px; margin-bottom: 30px; box-shadow: 0 10px 40px rgba(0,0,0,0.15); text-align: center; }
+        h1 { font-size: 32px; color: #0d47a1; margin-bottom: 10px; }
+        .header-links { font-size: 12px; margin-top: 15px; }
+        .header-links a { color: #1565c0; text-decoration: none; margin: 0 10px; }
+        .header-links a:hover { text-decoration: underline; }
+        .subtitle { font-size: 16px; color: #666; }
+        .search-section { background: white; border-radius: 12px; padding: 30px; margin-bottom: 30px; box-shadow: 0 10px 40px rgba(0,0,0,0.15); }
+        .search-box { display: flex; flex-direction: column; gap: 12px; }
+        textarea { padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 14px; font-family: 'Courier New', monospace; resize: vertical; min-height: 80px; }
+        textarea:focus { outline: none; border-color: #1565c0; box-shadow: 0 0 0 3px rgba(21,101,192,0.1); }
+        button { padding: 14px 32px; background: linear-gradient(135deg, #1565c0 0%, #1e88e5 100%); color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; box-shadow: 0 4px 12px rgba(21,101,192,0.3); }
+        button:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(21,101,192,0.4); }
+        .hints { font-size: 13px; color: #999; margin-top: 10px; }
+        .results-section { background: white; border-radius: 12px; padding: 30px; box-shadow: 0 10px 40px rgba(0,0,0,0.15); min-height: 200px; }
+        .loading { text-align: center; padding: 40px 20px; color: #1565c0; font-size: 16px; }
+        .error { background: #ffebee; color: #c62828; padding: 16px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #c62828; font-size: 15px; }
+        .suppliers { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; }
+        .supplier-card { border: 2px solid #e3f2fd; border-radius: 10px; padding: 20px; background: #f8f9fa; }
+        .supplier-name { font-size: 18px; font-weight: 700; color: #0d47a1; margin-bottom: 15px; }
+        .product { background: white; padding: 12px 14px; border-radius: 6px; border-left: 3px solid #1565c0; margin-bottom: 10px; transition: all 0.2s; }
+        .product:hover { box-shadow: 0 2px 8px rgba(21,101,192,0.15); transform: translateX(4px); }
+        .product-code { font-weight: 700; color: #0d47a1; margin-bottom: 4px; font-size: 15px; font-family: 'Courier New', monospace; }
+        .product-info { color: #666; font-size: 13px; }
+        .empty { text-align: center; color: #999; padding: 40px 20px; font-size: 16px; }
+    </style>
+</head>
+<body>
+    <div class="wrapper">
+        <header>
+            <h1>🔍 Jean Michel Lookup</h1>
+            <p class="subtitle">Moteur de recherche — RacMet, SERTIsteel, Oventrop, FIP</p>
+            <div class="header-links">
+                <a href="/admin.html">🔧 Admin Interface</a>
+            </div>
+        </header>
+
+        <div class="search-section">
+            <div class="search-box">
+                <textarea 
+                    id="searchInput" 
+                    placeholder="Colle tes références (espaces, virgules ou retour à la ligne)&#10;Ex: VKD IN316L15 1011462 ou VKD, IN316L15, 1011462"
+                    autocomplete="off"
+                ></textarea>
+                <button onclick="search()">Chercher</button>
+            </div>
+            <div class="hints">
+                💡 Formats acceptés : espaces, virgules ou retours à la ligne
+            </div>
+        </div>
+
+        <div class="results-section">
+            <div id="loading" style="display:none; text-align:center; color:#1565c0;">Recherche en cours...</div>
+            <div id="error" style="display:none; background:#ffebee; color:#c62828; padding:15px; border-radius:8px; border-left:4px solid #c62828;"></div>
+            <div id="results"></div>
+        </div>
+    </div>
+
+    <script>
+        const WORKER_URL = 'https://jean-michel-api.antonio-dev.workers.dev/';
+        
+        document.getElementById('searchInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && e.ctrlKey) search();
+        });
+
+        async function search() {
+            const rawInput = document.getElementById('searchInput').value.trim();
+            if (!rawInput) {
+                showError('Tape ou colle des références');
+                return;
+            }
+
+            const queries = rawInput
+                .split(/[\n,\s]+/)
+                .map(q => q.trim())
+                .filter(q => q.length > 0);
+
+            if (queries.length === 0) {
+                showError('Aucune référence valide');
+                return;
+            }
+
+            hideError();
+            showLoading();
+            clearResults();
+
+            try {
+                const allResults = {};
+
+                for (const query of queries) {
+                    const response = await fetch(WORKER_URL, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ query })
+                    });
+
+                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+                    const data = await response.json();
+
+                    for (const [supplier, products] of Object.entries(data)) {
+                        if (!allResults[supplier]) allResults[supplier] = [];
+                        if (Array.isArray(products)) {
+                            allResults[supplier].push(...products);
+                        }
+                    }
+                }
+
+                displayResults(allResults);
+            } catch (err) {
+                showError(`Erreur: ${err.message}`);
+            } finally {
+                hideLoading();
+            }
+        }
+
+        function displayResults(data) {
+            const resultsDiv = document.getElementById('results');
+
+            if (Object.keys(data).length === 0) {
+                resultsDiv.innerHTML = '<div class="empty">Aucun résultat trouvé</div>';
+                return;
+            }
+
+            let html = '<div class="suppliers">';
+
+            for (const [supplier, products] of Object.entries(data)) {
+                const unique = Array.from(new Map(products.map(p => [p.code, p])).values());
+                
+                html += `<div class="supplier-card">
+                    <div class="supplier-name">▶ ${supplier} (${unique.length})</div>`;
+
+                unique.forEach(product => {
+                    let infoHtml = '';
+                    if (product.type) infoHtml += `<strong>${product.type}</strong> `;
+                    if (product.diametre) infoHtml += `${product.diametre} `;
+                    
+                    html += `<div class="product">
+                        <div class="product-code">${product.code}</div>
+                        <div class="product-info">${infoHtml}</div>
+                    </div>`;
+                });
+
+                html += '</div>';
+            }
+
+            html += '</div>';
+            resultsDiv.innerHTML = html;
+        }
+
+        function showLoading() { document.getElementById('loading').style.display = 'block'; }
+        function hideLoading() { document.getElementById('loading').style.display = 'none'; }
+        function showError(msg) {
+            const errorDiv = document.getElementById('error');
+            errorDiv.textContent = msg;
+            errorDiv.style.display = 'block';
+        }
+        function hideError() { document.getElementById('error').style.display = 'none'; }
+        function clearResults() { document.getElementById('results').innerHTML = ''; }
+    </script>
+</body>
+</html>
