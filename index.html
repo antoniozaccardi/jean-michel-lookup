@@ -318,15 +318,7 @@
             }
         }
 
-        function displayResults(data) {
-            const unique = Array.from(new Map(products.map(p => [p.code, p])).values())
-    .sort((a, b) => {
-        const nameA = (a.type || a.diametre || 'N/A').toLowerCase();
-        const nameB = (b.type || b.diametre || 'N/A').toLowerCase();
-        return nameA.localeCompare(nameB);
-    });
-
-            if (Object.keys(data).length === 0) {
+                    if (Object.keys(data).length === 0) {
                 resultsDiv.innerHTML = '<div class="empty">Aucun résultat trouvé</div>';
                 return;
             }
