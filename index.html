@@ -32,6 +32,22 @@
         .product-code { font-weight: 700; color: #0d47a1; margin-bottom: 4px; font-size: 15px; font-family: 'Courier New', monospace; }
         .product-info { color: #666; font-size: 13px; }
         .empty { text-align: center; color: #999; padding: 40px 20px; font-size: 16px; }
+                .btn-admin {
+            padding: 8px 16px;
+            background: #1565c0;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-admin:hover {
+            background: #0d47a1;
+            transform: translateY(-2px);
+        }
     </style>
 </head>
 <body>
@@ -39,8 +55,8 @@
         <header>
             <h1>🔍 Jean Michel Lookup</h1>
             <p class="subtitle">Moteur de recherche — RacMet, SERTIsteel, Oventrop, FIP</p>
-            <div class="header-links">
-                <a href="/admin.html">🔧 Admin Interface</a>
+                        <div class="header-links">
+                <button class="btn-admin" onclick="window.location.href='/admin.html'">🔧 Admin Interface</button>
             </div>
         </header>
 
