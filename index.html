@@ -334,7 +334,12 @@
             let html = '<div class="suppliers">';
 
             for (const [supplier, products] of Object.entries(data)) {
-                const unique = Array.from(new Map(products.map(p => [p.code, p])).values());
+                let unique = Array.from(new Map(products.map(p => [p.code, p])).values());
+unique = unique.sort((a, b) => {
+    const nameA = (a.type || a.diametre || 'N/A').toLowerCase();
+    const nameB = (b.type || b.diametre || 'N/A').toLowerCase();
+    return nameA.localeCompare(nameB);
+});
                 
                 html += `<div class="supplier-section">
                     <div class="supplier-header">
